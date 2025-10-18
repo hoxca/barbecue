@@ -1,0 +1,10 @@
+.DS_Store
+bin/
+tmp/
+.env
+data/
+barbecue
+conf/
+notes.txt
+log/
+
