@@ -21,7 +21,7 @@ all: fmt lint | $(BIN) ; $(info $(M) building executable…) @ ## Build program 
 	$Q $(GO) build \
 		-tags release \
 		-ldflags '-X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.BuildDate=$(DATE)' \
-		-o $(BIN)/$(basename $(MODULE)) main.go
+		-o $(BIN)/$(basename $(MODULE)) *.go
 
 # Tools
 
@@ -82,8 +82,8 @@ test-coverage: fmt lint test-coverage-tools ; $(info $(M) running coverage tests
 	$Q $(GOCOV) convert $(COVERAGE_PROFILE) | $(GOCOVXML) > $(COVERAGE_XML)
 
 .PHONY: lint
-lint: ; $(info $(M) running golint…  $Q $(GOLINT) -set_exit_status $(PKGS)) @ ## Run golint
-	$Q $(GOLINT) run ../$(PKGS)
+lint: ; $(info $(M) running golint…  $Q $(GOLINT) $(PKGS)) @ ## Run golint
+	$Q $(GOLINT) run *.go
 
 .PHONY: fmt
 fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
@@ -94,14 +94,14 @@ build: ; $(info $(M) building executable…) @ ## Build program binary
 	$Q $(GO) build \
 		-tags release \
 		-ldflags '-X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.BuildDate=$(DATE)' \
-		-o $(BIN)/$(basename $(MODULE)) main.go
+		-o $(BIN)/$(basename $(MODULE)) *.go
 
 .PHONY: winbuild
 winbuild: ; $(info $(M) building executable…) @ ## Build program binary
 	$Q GOOS=windows GOARCH=amd64 $(GO) build \
 		-tags release \
 		-ldflags '-X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.BuildDate=$(DATE)' \
-		-o $(BIN)/$(basename $(MODULE)).exe main.go
+		-o $(BIN)/$(basename $(MODULE)).exe *.go
 
 # Misc
 
