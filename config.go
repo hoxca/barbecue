@@ -74,7 +74,7 @@ func readConfig() *viper.Viper {
 	v.AddConfigPath(confdir1)
 	v.AddConfigPath(confdir2)
 	v.SetConfigType("yaml")
-	v.SetConfigName("barbecue.yml")
+	v.SetConfigName("barbecue.yaml")
 
 	viper.AutomaticEnv() // read in environment variables that match
 
