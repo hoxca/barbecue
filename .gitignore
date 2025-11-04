@@ -4,7 +4,6 @@ tmp/
 .env
 data/
 barbecue
-conf/
 notes.txt
 log/
 
