@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	Log "github.com/apatters/go-conlog"
@@ -78,6 +78,60 @@ type controldata struct {
 }
 
 var controlDataUpdated = false
+
+// SafeConnection provides thread-safe access to WebSocket connection.
+type SafeConnection struct {
+	conn   *websocket.Conn
+	mu     sync.RWMutex
+	closed bool
+}
+
+// NewSafeConnection creates a new safe connection wrapper.
+func NewSafeConnection(conn *websocket.Conn) *SafeConnection {
+	return &SafeConnection{
+		conn:   conn,
+		closed: false,
+	}
+}
+
+// WriteMessage safely writes to the connection if not closed.
+func (sc *SafeConnection) WriteMessage(messageType int, data []byte) error {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	if sc.closed {
+		return errors.New("connection is closed")
+	}
+
+	if sc.conn == nil {
+		return errors.New("no underlying connection")
+	}
+
+	return sc.conn.WriteMessage(messageType, data)
+}
+
+// Close safely closes the connection and marks it as closed.
+func (sc *SafeConnection) Close() error {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	if sc.closed {
+		return nil // Already closed
+	}
+
+	sc.closed = true
+	if sc.conn != nil {
+		return sc.conn.Close()
+	}
+	return nil // No connection to close
+}
+
+// IsClosed returns whether the connection is closed.
+func (sc *SafeConnection) IsClosed() bool {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+	return sc.closed
+}
 
 type method struct {
 	Method string `json:"method"`
@@ -173,15 +227,16 @@ func connectVoyager(addr *string) (*websocket.Conn, error) {
 	Log.Debugf("connecting to %s", u.String())
 
 	websocket.DefaultDialer.HandshakeTimeout = 1 * time.Second
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		Log.Printf("Can't connect, verify Voyager address or tcp port in the Voyager configuration\n")
-		// Log.Fatal("Critical: ", err)
+		return c, err
 	}
+	defer resp.Body.Close()
 	return c, err
 }
 
-func remoteSetDashboard(c *websocket.Conn) {
+func remoteSetDashboard(sc *SafeConnection) {
 	p := &params{
 		UID:  fmt.Sprintf("%s", uuid.Must(uuid.NewV4())),
 		IsOn: true,
@@ -194,12 +249,12 @@ func remoteSetDashboard(c *websocket.Conn) {
 	}
 
 	data, _ := json.Marshal(setDashboard)
-	sendToVoyager(c, data)
+	sendToVoyager(sc, data)
 }
 
-func sendToVoyager(c *websocket.Conn, data []byte) {
-	lastpoll = time.Now()
-	err := c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s\r\n", data)))
+func sendToVoyager(sc *SafeConnection, data []byte) {
+	message := fmt.Appendf(nil, "%s\r\n", data)
+	err := sc.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
 		Log.Println("write:", err)
 		return
@@ -266,18 +321,16 @@ func voyagerStatusDebug() {
 	}
 }
 
-func recvFromVoyager(c *websocket.Conn, done chan bool) {
+func recvFromVoyager(sc *SafeConnection, done chan bool) {
 	for {
 		select {
 		case <-done:
 			Log.Debugf("Quit recv loop!")
-			quit <- true
 			return
 		default:
-			_, message, err := c.ReadMessage()
+			_, message, err := sc.conn.ReadMessage()
 			if err != nil {
 				Log.Warn("read:", err)
-				quit <- true
 				return
 			}
 			// parse incoming message
@@ -320,6 +373,12 @@ func parseLogEvent(message []byte) (float64, string, string) {
 	err := json.Unmarshal(message, &e)
 	if err != nil {
 		Log.Warn("Cannot parse logEvent: %s", err)
+		return 0, "", ""
+	}
+
+	// Check if Type is within valid range to avoid panic
+	if e.Type < 1 || e.Type > 9 {
+		return e.TimeInfo, "", e.Text
 	}
 
 	return e.TimeInfo, e.Type.String(), e.Text
@@ -352,64 +411,22 @@ func parseControlData(message []byte) controldata {
 	return cdata
 }
 
-var lastpoll time.Time
-
-func heartbeatVoyager(c *websocket.Conn, quit chan bool) {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	lastpoll = time.Now()
-
-	ticker := time.NewTicker(time.Second)
+func heartbeatVoyager(sc *SafeConnection, quit chan bool) {
+	ticker := time.NewTicker(45 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case t := <-ticker.C:
-			now := t
-			elapsed := now.Sub(lastpoll)
-
-			// manage heartbeat
-			if elapsed.Seconds() > 10 {
-				lastpoll = now
-				secs := now.Unix()
-				heartbeat := &event{
-					Event:     "Polling",
-					Timestamp: float64(secs),
-					Inst:      1,
-				}
-				data, _ := json.Marshal(heartbeat)
-				sendToVoyager(c, data)
-
-				Log.Debugf("Heartbeat Sent")
+		case <-ticker.C:
+			// Send heartbeat
+			if err := sc.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				Log.Error("Failed to send heartbeat: %v", err)
+				return
 			}
 		case <-quit:
-			Log.Debugf("Quit heartbeat loop!")
-			err := c.WriteMessage(
-				websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
-			)
-			if err != nil {
-				Log.Println("write close:", err)
-				return
-			}
+			// Received signal to quit
+			Log.Info("Heartbeat goroutine exiting...")
 			return
-		case <-interrupt:
-			Log.Debugf("Want interrupt!")
-			// Close the read goroutine
-			done <- true
-			// Cleanly close the websocket connection by sending a close message
-			err := c.WriteMessage(
-				websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
-			)
-			if err != nil {
-				Log.Warn("write close:", err)
-				return
-			}
-			Log.Println("Shutdown barbecue")
-
-			os.Exit(0)
 		}
 	}
 }

@@ -15,8 +15,10 @@ var (
 	verbosity = flag.String("level", "warn", "set log level of barbecue default warn")
 )
 
-var quit chan bool
-var done chan bool
+var (
+	quit chan bool
+	done chan bool
+)
 
 func main() {
 	var c *websocket.Conn
@@ -32,12 +34,16 @@ func main() {
 	}
 	defer c.Close()
 
+	// Wrap the connection with SafeConnection
+	sc := NewSafeConnection(c)
+	defer sc.Close()
+
 	quit = make(chan bool)
 	done = make(chan bool)
 
-	go recvFromVoyager(c, done)
-	remoteSetDashboard(c)
-	go heartbeatVoyager(c, quit)
+	go recvFromVoyager(sc, done)
+	remoteSetDashboard(sc)
+	go heartbeatVoyager(sc, quit)
 	time.Sleep(1 * time.Second)
 
 	voyagerStatusDebug()
