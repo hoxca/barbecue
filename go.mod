@@ -1,17 +1,17 @@
 module barbecue
 
-go 1.25.2
+go 1.25.4
 
 require (
 	github.com/apatters/go-conlog v1.3.0
+	github.com/gofrs/uuid/v5 v5.3.2
+	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/viper v1.21.0
 )
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/gofrs/uuid/v5 v5.3.2 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -22,6 +22,6 @@ require (
 	github.com/tevino/abool v0.0.0-20170917061928-9b9efcf221b5 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.0.0-20190123085648-057139ce5d2b // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 )
