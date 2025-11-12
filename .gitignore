@@ -7,3 +7,5 @@ barbecue
 notes.txt
 log/
 .mailmap
+test/
+AGENTS.md

@@ -29,57 +29,50 @@ $(BIN):
 	@mkdir -p $@
 $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 	$Q tmp=$$(mktemp -d); \
-	   env GO111MODULE=off GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
+	   env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
 		|| ret=$$?; \
 	   rm -rf $$tmp ; exit $$ret
 
 GOLINT = golangci-lint
-#$(BIN)/golint: PACKAGE=golang.org/x/lint/golint
 
-GOCOV = $(BIN)/gocov
-$(BIN)/gocov: PACKAGE=github.com/axw/gocov/...
-
-GOCOVXML = $(BIN)/gocov-xml
-$(BIN)/gocov-xml: PACKAGE=github.com/AlekSi/gocov-xml
-
-GO2XUNIT = $(BIN)/go2xunit
-$(BIN)/go2xunit: PACKAGE=github.com/tebeka/go2xunit
+GOTEST = gotestsum
 
 # Tests
 
-TEST_TARGETS := test-default test-bench test-short test-verbose test-race
+TEST_TARGETS := test-default test-bench test-race test-short
 .PHONY: $(TEST_TARGETS) test-xml check test tests
 test-bench:   ARGS=-run=__absolutelynothing__ -bench=. ## Run benchmarks
 test-short:   ARGS=-short        ## Run only short tests
-test-verbose: ARGS=-v            ## Run tests in verbose mode with coverage reporting
 test-race:    ARGS=-race         ## Run tests with race detector
 $(TEST_TARGETS): NAME=$(MAKECMDGOALS:test-%=%)
 $(TEST_TARGETS): test
 check test tests: fmt lint ; $(info $(M) running $(NAME:%=% )tests…) @ ## Run tests
-	$Q $(GO) test -timeout $(TIMEOUT)s $(ARGS) $(TESTPKGS)
+	$Q $(GOTEST) -- -timeout $(TIMEOUT)s $(ARGS) $(TESTPKGS)
 
-test-xml: fmt lint | $(GO2XUNIT) ; $(info $(M) running xUnit tests…) @ ## Run tests with xUnit output
-	$Q mkdir -p test
-	$Q 2>&1 $(GO) test -timeout $(TIMEOUT)s -v $(TESTPKGS) | tee test/tests.output
-	$(GO2XUNIT) -fail -input test/tests.output -output test/tests.xml
+.PHONY: test-integration
+test-integration: fmt lint ; $(info $(M) running $(NAME:%=% )tests…) @ ## Run tests
+	$Q $(GOTEST) -f testdox -- -tags=integration -timeout $(TIMEOUT)s $(ARGS) $(TESTPKGS)
+
+.PHONY: test-slower
+test-slower: fmt lint ; $(info $(M) running $(NAME:%=% )tests…) @ ## Run tests
+	$Q $(GO) test -json $(TESTPKGS) | $(GOTEST) tool slowest --skip-stmt "testing.Short" --threshold 200ms
+
+.PHONY: test-verbose
+test-verbose: fmt lint ; $(info $(M) running $(NAME:%=% )tests…) @ ## Run tests
+	$Q $(GOTEST) -f testdox -- -timeout $(TIMEOUT)s $(ARGS) $(TESTPKGS)
 
 COVERAGE_MODE    = atomic
 COVERAGE_PROFILE = $(COVERAGE_DIR)/profile.out
-COVERAGE_XML     = $(COVERAGE_DIR)/coverage.xml
-COVERAGE_HTML    = $(COVERAGE_DIR)/index.html
-.PHONY: test-coverage test-coverage-tools
-test-coverage-tools: | $(GOCOV) $(GOCOVXML)
-test-coverage: COVERAGE_DIR := $(CURDIR)/test/coverage.$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-test-coverage: fmt lint test-coverage-tools ; $(info $(M) running coverage tests…) @ ## Run coverage tests
+.PHONY: test-coverage
+test-coverage: COVERAGE_DIR := $(CURDIR)/test/coverage.out
+test-coverage: fmt lint; $(info $(M) running coverage tests…) @ ## Run coverage tests
 	$Q mkdir -p $(COVERAGE_DIR)
-	$Q $(GO) test \
+	$Q $(GOTEST) -- \
 		-coverpkg=$$($(GO) list -f '{{ join .Deps "\n" }}' $(TESTPKGS) | \
 					grep '^$(MODULE)/' | \
 					tr '\n' ',' | sed 's/,$$//') \
 		-covermode=$(COVERAGE_MODE) \
 		-coverprofile="$(COVERAGE_PROFILE)" $(TESTPKGS)
-	$Q $(GO) tool cover -html=$(COVERAGE_PROFILE) -o $(COVERAGE_HTML)
-	$Q $(GOCOV) convert $(COVERAGE_PROFILE) | $(GOCOVXML) > $(COVERAGE_XML)
 
 .PHONY: lint
 lint: ; $(info $(M) running golint…  $Q $(GOLINT) $(PKGS)) @ ## Run golint
