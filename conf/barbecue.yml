@@ -1,4 +1,0 @@
-voyager:
-  tcpserver:
-    address: 172.20.4.64
-    port: 5950
