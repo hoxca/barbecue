@@ -30,12 +30,12 @@ func ConnectVoyager(addr *string) (*websocket.Conn, error) {
 	return c, err
 }
 
+// RemoteSetDashboard is needed to be able to send voyager command
 func RemoteSetDashboard(sc *SafeConnection) {
 	p := &Params{
 		UID:  fmt.Sprintf("%s", uuid.Must(uuid.NewV4())),
 		IsOn: true,
 	}
-
 	setDashboard := &Method{
 		Method: "RemoteSetDashboardMode",
 		Params: *p,
@@ -46,6 +46,7 @@ func RemoteSetDashboard(sc *SafeConnection) {
 	SendToVoyager(sc, data)
 }
 
+// SendToVoyager send command to voyager
 func SendToVoyager(sc *SafeConnection, data []byte) {
 	message := fmt.Appendf(nil, "%s\r\n", data)
 	err := sc.WriteMessage(websocket.TextMessage, message)
@@ -57,7 +58,7 @@ func SendToVoyager(sc *SafeConnection, data []byte) {
 	time.Sleep(1 * time.Second)
 }
 
-func VoyagerStatusDebug() {
+func CameraStatusDebug() {
 	if ControlDataUpdated {
 		Log.Info("Voyager Status:")
 		Log.Infof("  Voyager    status: %d", VoyagerStatus.VOYSTAT)
@@ -106,6 +107,7 @@ func RecvFromVoyager(sc *SafeConnection, done chan bool) {
 	}
 }
 
+// ParseLogEvent decode voyager event log
 func ParseLogEvent(message []byte) (float64, string, string) {
 	type logEvent struct {
 		Event     string   `json:"Event"`
@@ -123,12 +125,10 @@ func ParseLogEvent(message []byte) (float64, string, string) {
 		Log.Warn("Cannot parse logEvent: %s", err)
 		return 0, "", ""
 	}
-
 	// Check if Type is within valid range to avoid panic
 	if e.Type < 1 || e.Type > 9 {
 		return e.TimeInfo, "", e.Text
 	}
-
 	return e.TimeInfo, e.Type.String(), e.Text
 }
 
@@ -202,7 +202,7 @@ func GetCameraStatusWithConnection() (Camstatus, error) {
 	go HeartbeatVoyager(sc, Quit, ticker)
 	time.Sleep(1 * time.Second)
 
-	VoyagerStatusDebug()
+	CameraStatusDebug()
 
 	camera := RetrieveCameraStatus()
 

@@ -1,7 +1,6 @@
-package main
+package app
 
 import (
-	"barbecue/internal/app"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -71,7 +70,7 @@ voyager:
 			// Handle different message types
 			if strings.Contains(msg, "RemoteSetDashboardMode") {
 				// Send control data response
-				controlData := app.Controldata{
+				controlData := Controldata{
 					Event:     "ControlData",
 					Timestamp: float64(time.Now().Unix()),
 					Host:      "test",
@@ -90,7 +89,7 @@ voyager:
 				conn.WriteMessage(websocket.TextMessage, []byte(string(data)+"\r\n"))
 			} else if strings.Contains(msg, "Polling") {
 				// Send heartbeat response
-				heartbeat := app.Event{
+				heartbeat := Event{
 					Event:     "Polling",
 					Timestamp: float64(time.Now().Unix()),
 					Inst:      1,
@@ -109,7 +108,7 @@ voyager:
 	// Test connection and data retrieval
 	t.Run("Complete workflow test", func(t *testing.T) {
 		// Connect to Voyager
-		conn, connectErr := app.ConnectVoyager(testAddr)
+		conn, connectErr := ConnectVoyager(testAddr)
 		if connectErr != nil {
 			t.Errorf("Failed to connect to Voyager: %v", connectErr)
 			return
@@ -117,17 +116,17 @@ voyager:
 		defer conn.Close()
 
 		// Wrap connection with SafeConnection
-		sc := app.NewSafeConnection(conn)
+		sc := NewSafeConnection(conn)
 		defer sc.Close()
 
 		// Start receiving messages with proper cleanup
 		testDone := make(chan bool, 1)
 		go func() {
-			app.RecvFromVoyager(sc, testDone)
+			RecvFromVoyager(sc, testDone)
 		}()
 
 		// Set dashboard mode
-		app.RemoteSetDashboard(sc)
+		RemoteSetDashboard(sc)
 
 		// Wait a short time for messages to be processed
 		time.Sleep(1 * time.Second)
@@ -137,12 +136,12 @@ voyager:
 		time.Sleep(100 * time.Millisecond) // Give goroutine time to exit
 
 		// Check if control data was updated
-		if !app.ControlDataUpdated {
+		if !ControlDataUpdated {
 			t.Error("Expected controlDataUpdated to be true")
 		}
 
 		// Retrieve camera status
-		camera := app.RetrieveCameraStatus()
+		camera := RetrieveCameraStatus()
 		if camera.Ambient == 0 && camera.Temp == 0 {
 			t.Error("Expected camera status to be populated")
 		}
@@ -195,7 +194,7 @@ func TestCameraStatusLogic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			camera := app.Camstatus{
+			camera := Camstatus{
 				Ambient: tt.ambientTemp,
 				Temp:    tt.cameraTemp,
 				Power:   tt.cameraPower,
@@ -241,15 +240,15 @@ voyager:
 		os.Args = []string{tempDir}
 
 		// Test configuration reading
-		v := app.ReadConfig()
+		v := ReadConfig()
 		if v == nil {
 			t.Error("readConfig() returned nil")
 			return
 		}
 
 		// Test configuration parsing
-		app.AddrFlag = "127.0.0.1:5950"
-		app.ParseConfig()
+		AddrFlag = "127.0.0.1:5950"
+		ParseConfig()
 
 		// The address should be updated from config
 		// Note: This test is limited by the current implementation
@@ -261,7 +260,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 	// Test error handling in various scenarios
 	t.Run("Connection failure handling", func(t *testing.T) {
 		invalidAddr := "ws://127.0.0.1:99999" // Invalid port
-		conn, err := app.ConnectVoyager(&invalidAddr)
+		conn, err := ConnectVoyager(&invalidAddr)
 
 		if err == nil {
 			t.Error("Expected connection to fail")
@@ -278,7 +277,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 			`{"Event":"ControlData","Timestamp":1234567890.123,"Host":"test","Inst":1,"RUNSEQ":"test_sequence","RUNDS":"","CCDSTAT":5,"VOYSTAT":1"`, // Missing closing brace
 		)
 
-		result := app.ParseControlData(malformedJSON)
+		result := ParseControlData(malformedJSON)
 
 		// Should return default values for malformed JSON
 		if result.SEQRUNNING || result.DRAGRUNNING {
@@ -295,7 +294,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 
 		os.Args = []string{tempDir}
 
-		v := app.ReadConfig()
+		v := ReadConfig()
 		if v == nil {
 			t.Error("readConfig() should return viper instance even with no config file")
 		}
@@ -338,7 +337,7 @@ func TestMessageFlowIntegration(t *testing.T) {
 
 				// Respond to dashboard set
 				if strings.Contains(msg, "RemoteSetDashboardMode") {
-					controlData := app.Controldata{
+					controlData := Controldata{
 						Event:     "ControlData",
 						Timestamp: float64(time.Now().Unix()),
 						Host:      "test",
@@ -355,7 +354,7 @@ func TestMessageFlowIntegration(t *testing.T) {
 
 				// Respond to polling
 				if strings.Contains(msg, "Polling") {
-					heartbeat := app.Event{
+					heartbeat := Event{
 						Event:     "Polling",
 						Timestamp: float64(time.Now().Unix()),
 						Inst:      1,
@@ -377,7 +376,7 @@ func TestMessageFlowIntegration(t *testing.T) {
 		testAddr2 := &hostPort
 
 		// Connect and test message flow
-		conn, err := app.ConnectVoyager(testAddr2)
+		conn, err := ConnectVoyager(testAddr2)
 		if err != nil {
 			t.Errorf("Failed to connect: %v", err)
 			return
@@ -385,23 +384,23 @@ func TestMessageFlowIntegration(t *testing.T) {
 		defer conn.Close()
 
 		// Wrap connection with SafeConnection
-		sc := app.NewSafeConnection(conn)
+		sc := NewSafeConnection(conn)
 		defer sc.Close()
 
 		// Send dashboard set message
-		app.RemoteSetDashboard(sc)
+		RemoteSetDashboard(sc)
 
 		// Wait for response
 		time.Sleep(500 * time.Millisecond)
 
 		// Send polling message
-		heartbeat := app.Event{
+		heartbeat := Event{
 			Event:     "Polling",
 			Timestamp: float64(time.Now().Unix()),
 			Inst:      1,
 		}
 		data, _ := json.Marshal(heartbeat)
-		app.SendToVoyager(sc, data)
+		SendToVoyager(sc, data)
 
 		// Wait for response
 		time.Sleep(500 * time.Millisecond)

@@ -87,3 +87,40 @@ func TestConfigEnvironmentOverride(t *testing.T) {
 		}
 	})
 }
+
+func TestLogLevel_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		level    Loglevel
+		expected string
+	}{
+		{"Debug level", Loglevel(1), "DEBUG"},
+		{"Info level", Loglevel(2), "INFO"},
+		{"Warning level", Loglevel(3), "WARNING"},
+		{"Critical level", Loglevel(4), "CRITICAL"},
+		{"Title level", Loglevel(5), "TITLE"},
+		{"Subtitle level", Loglevel(6), "SUBTITLE"},
+		{"Event level", Loglevel(7), "EVENT"},
+		{"Request level", Loglevel(8), "REQUEST"},
+		{"Emergency level", Loglevel(9), "EMERGENCY"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.level.String()
+			if result != tt.expected {
+				t.Errorf("Loglevel.String() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+
+	// Test out of bounds (should panic or return empty)
+	t.Run("Out of bounds", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("Expected panic for out of bounds Loglevel")
+			}
+		}()
+		_ = Loglevel(-1).String()
+	})
+}
