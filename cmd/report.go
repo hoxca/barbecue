@@ -35,7 +35,7 @@ func runReport(_ *cobra.Command, _ []string) {
 	fmt.Printf("Camera Status: %s\n", camera.Status)
 	fmt.Printf("Camera Power: %s\n", camera.Power)
 
-	if camera.Temp >= camera.Ambient && camera.Power == "OFF" {
+	if camera.Temp >= (camera.Ambient+1) && (camera.Power == "OFF" || camera.Power == "0") {
 		fmt.Print("OK CAMERA IDLE!\n")
 	}
 }
