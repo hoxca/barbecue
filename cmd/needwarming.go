@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// needWarmingCmd represents the needWarming command.
+// needWarmingCmd implements the needWarming command.
 var needWarmingCmd = &cobra.Command{
 	Use:   "needWarming",
 	Short: "Check if camera needs warming",
@@ -20,7 +20,7 @@ Connects to Voyager server, retrieves camera status, and compares the temperatur
 
 var warmTemp int
 
-//nolint:gochecknoinits // required for Cobra command registration
+// required for Cobra command registration.
 func init() {
 	rootCmd.AddCommand(needWarmingCmd)
 	needWarmingCmd.Flags().IntVar(&warmTemp, "warm-temp", 0, "Warm temperature threshold (required)")
