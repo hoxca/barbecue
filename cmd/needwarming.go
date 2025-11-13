@@ -36,7 +36,7 @@ func runNeedWarming(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if camera.Temp < warmTemp {
+	if camera.Cooling && camera.Temp < warmTemp {
 		fmt.Println("Ok, camera need warming")
 	} else {
 		fmt.Println("Camera temperature is adequate")

@@ -185,6 +185,7 @@ type Camstatus struct {
 	Temp    int
 	Power   string
 	Status  string
+	Cooling bool
 }
 
 var (
