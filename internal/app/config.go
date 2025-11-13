@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func parseConfig() {
-	viper := readConfig()
+func ParseConfig() {
+	viper := ReadConfig()
 	if viper == nil {
 		fmt.Println("null config")
 	}
@@ -30,19 +30,19 @@ func parseConfig() {
 		viperVoyPort = 5950
 	}
 
-	if *addr == "127.0.0.1:5950" &&
+	if AddrFlag == "127.0.0.1:5950" &&
 		(viper.IsSet("voyager.tcpserver.address") || viper.IsSet("voyager.tcpserver.port")) {
-		*addr = fmt.Sprintf("%s:%d", viperVoyAddr, viperVoyPort)
+		AddrFlag = fmt.Sprintf("%s:%d", viperVoyAddr, viperVoyPort)
 	}
 
-	Log.Debugf("voyager addr: %s", *addr)
+	Log.Debugf("voyager addr: %s", AddrFlag)
 }
 
-func setUpLogs() {
+func SetUpLogs() {
 	formatter := Log.NewStdFormatter()
 	formatter.Options.LogLevelFmt = Log.LogLevelFormatLongTitle
 	Log.SetFormatter(formatter)
-	switch *verbosity {
+	switch VerbosityFlag {
 	case "debug":
 		Log.SetLevel(Log.DebugLevel)
 	case "info":
@@ -56,7 +56,7 @@ func setUpLogs() {
 	}
 }
 
-func readConfig() *viper.Viper {
+func ReadConfig() *viper.Viper {
 	var err error
 	v := viper.New()
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))

@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"testing"
@@ -7,25 +7,25 @@ import (
 func TestLogLevel_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		level    loglevel
+		level    Loglevel
 		expected string
 	}{
-		{"Debug level", loglevel(1), "DEBUG"},
-		{"Info level", loglevel(2), "INFO"},
-		{"Warning level", loglevel(3), "WARNING"},
-		{"Critical level", loglevel(4), "CRITICAL"},
-		{"Title level", loglevel(5), "TITLE"},
-		{"Subtitle level", loglevel(6), "SUBTITLE"},
-		{"Event level", loglevel(7), "EVENT"},
-		{"Request level", loglevel(8), "REQUEST"},
-		{"Emergency level", loglevel(9), "EMERGENCY"},
+		{"Debug level", Loglevel(1), "DEBUG"},
+		{"Info level", Loglevel(2), "INFO"},
+		{"Warning level", Loglevel(3), "WARNING"},
+		{"Critical level", Loglevel(4), "CRITICAL"},
+		{"Title level", Loglevel(5), "TITLE"},
+		{"Subtitle level", Loglevel(6), "SUBTITLE"},
+		{"Event level", Loglevel(7), "EVENT"},
+		{"Request level", Loglevel(8), "REQUEST"},
+		{"Emergency level", Loglevel(9), "EMERGENCY"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.level.String()
 			if result != tt.expected {
-				t.Errorf("loglevel.String() = %v, want %v", result, tt.expected)
+				t.Errorf("Loglevel.String() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -34,36 +34,36 @@ func TestLogLevel_String(t *testing.T) {
 	t.Run("Out of bounds", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Errorf("Expected panic for out of bounds loglevel")
+				t.Errorf("Expected panic for out of bounds Loglevel")
 			}
 		}()
-		_ = loglevel(-1).String()
+		_ = Loglevel(-1).String()
 	})
 }
 
 func TestCcdStat_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		status   ccdstat
+		status   Ccdstat
 		expected string
 	}{
-		{"Init status", ccdstat(0), "INIT"},
-		{"Undef status", ccdstat(1), "UNDEF"},
-		{"No cooler status", ccdstat(2), "NO COOLER"},
-		{"Off status", ccdstat(3), "OFF"},
-		{"Cooling status", ccdstat(4), "COOLING"},
-		{"Cooled status", ccdstat(5), "COOLED"},
-		{"Timeout status", ccdstat(6), "TIMEOUT"},
-		{"Warmup running status", ccdstat(7), "WARMUP RUNNING"},
-		{"Warmup end status", ccdstat(8), "WARMUP END"},
-		{"Error status", ccdstat(9), "ERROR"},
+		{"Init status", Ccdstat(0), "INIT"},
+		{"Undef status", Ccdstat(1), "UNDEF"},
+		{"No cooler status", Ccdstat(2), "NO COOLER"},
+		{"Off status", Ccdstat(3), "OFF"},
+		{"Cooling status", Ccdstat(4), "COOLING"},
+		{"Cooled status", Ccdstat(5), "COOLED"},
+		{"Timeout status", Ccdstat(6), "TIMEOUT"},
+		{"Warmup running status", Ccdstat(7), "WARMUP RUNNING"},
+		{"Warmup end status", Ccdstat(8), "WARMUP END"},
+		{"Error status", Ccdstat(9), "ERROR"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.status.String()
 			if result != tt.expected {
-				t.Errorf("ccdstat.String() = %v, want %v", result, tt.expected)
+				t.Errorf("Ccdstat.String() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -72,16 +72,16 @@ func TestCcdStat_String(t *testing.T) {
 	t.Run("Out of bounds", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Errorf("Expected panic for out of bounds ccdstat")
+				t.Errorf("Expected panic for out of bounds Ccdstat")
 			}
 		}()
-		_ = ccdstat(-1).String()
+		_ = Ccdstat(-1).String()
 	})
 }
 
 func TestGetCameraPower(t *testing.T) {
 	// Reset control data flag
-	controlDataUpdated = false
+	ControlDataUpdated = false
 
 	tests := []struct {
 		name           string
@@ -98,11 +98,11 @@ func TestGetCameraPower(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			controlDataUpdated = tt.controlUpdated
-			voyagerStatus.CCDPOW = tt.ccdPow
-			result := getCameraPower()
+			ControlDataUpdated = tt.controlUpdated
+			VoyagerStatus.CCDPOW = tt.ccdPow
+			result := GetCameraPower()
 			if result != tt.expected {
-				t.Errorf("getCameraPower() = %v, want %v", result, tt.expected)
+				t.Errorf("GetCameraPower() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -110,7 +110,7 @@ func TestGetCameraPower(t *testing.T) {
 
 func TestGetCameraStatus(t *testing.T) {
 	// Reset control data flag
-	controlDataUpdated = false
+	ControlDataUpdated = false
 
 	tests := []struct {
 		name           string
@@ -133,11 +133,11 @@ func TestGetCameraStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			controlDataUpdated = tt.controlUpdated
-			voyagerStatus.CCDSTAT = tt.ccdStat
-			result := getCameraStatus()
+			ControlDataUpdated = tt.controlUpdated
+			VoyagerStatus.CCDSTAT = tt.ccdStat
+			result := GetCameraStatus()
 			if result != tt.expected {
-				t.Errorf("getCameraStatus() = %v, want %v", result, tt.expected)
+				t.Errorf("GetCameraStatus() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -145,7 +145,7 @@ func TestGetCameraStatus(t *testing.T) {
 
 func TestGetFocuserTemperature(t *testing.T) {
 	// Reset control data flag
-	controlDataUpdated = false
+	ControlDataUpdated = false
 
 	tests := []struct {
 		name           string
@@ -164,11 +164,11 @@ func TestGetFocuserTemperature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			controlDataUpdated = tt.controlUpdated
-			voyagerStatus.AFTEMP = tt.afTemp
-			result := getFocuserTemperature()
+			ControlDataUpdated = tt.controlUpdated
+			VoyagerStatus.AFTEMP = tt.afTemp
+			result := GetFocuserTemperature()
 			if result != tt.expected {
-				t.Errorf("getFocuserTemperature() = %v, want %v", result, tt.expected)
+				t.Errorf("GetFocuserTemperature() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -176,7 +176,7 @@ func TestGetFocuserTemperature(t *testing.T) {
 
 func TestGetCameraTemperature(t *testing.T) {
 	// Reset control data flag
-	controlDataUpdated = false
+	ControlDataUpdated = false
 
 	tests := []struct {
 		name           string
@@ -195,11 +195,11 @@ func TestGetCameraTemperature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			controlDataUpdated = tt.controlUpdated
-			voyagerStatus.CCDTEMP = tt.ccdTemp
-			result := getCameraTemperature()
+			ControlDataUpdated = tt.controlUpdated
+			VoyagerStatus.CCDTEMP = tt.ccdTemp
+			result := GetCameraTemperature()
 			if result != tt.expected {
-				t.Errorf("getCameraTemperature() = %v, want %v", result, tt.expected)
+				t.Errorf("GetCameraTemperature() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -207,55 +207,55 @@ func TestGetCameraTemperature(t *testing.T) {
 
 func TestRetrieveCameraStatus(t *testing.T) {
 	// Reset control data flag
-	controlDataUpdated = false
+	ControlDataUpdated = false
 
 	// Test when control data is not updated
 	t.Run("Control data not updated", func(t *testing.T) {
-		controlDataUpdated = false
-		result := retrieveCameraStatus()
-		expected := camstatus{Ambient: 0, Temp: 0, Power: "", Status: ""}
+		ControlDataUpdated = false
+		result := RetrieveCameraStatus()
+		expected := Camstatus{Ambient: 0, Temp: 0, Power: "", Status: ""}
 		if result != expected {
-			t.Errorf("retrieveCameraStatus() = %v, want %v", result, expected)
+			t.Errorf("RetrieveCameraStatus() = %v, want %v", result, expected)
 		}
 	})
 
 	// Test when control data is updated
 	t.Run("Control data updated", func(t *testing.T) {
-		controlDataUpdated = true
-		voyagerStatus.AFTEMP = 20.6
-		voyagerStatus.CCDTEMP = -15.4
-		voyagerStatus.CCDPOW = 50
-		voyagerStatus.CCDSTAT = 5 // COOLED
+		ControlDataUpdated = true
+		VoyagerStatus.AFTEMP = 20.6
+		VoyagerStatus.CCDTEMP = -15.4
+		VoyagerStatus.CCDPOW = 50
+		VoyagerStatus.CCDSTAT = 5 // COOLED
 
-		result := retrieveCameraStatus()
-		expected := camstatus{
+		result := RetrieveCameraStatus()
+		expected := Camstatus{
 			Ambient: 21,  // 20.6 rounds to 21
 			Temp:    -15, // -15.4 rounds to -15
 			Power:   "50",
 			Status:  "COOLED",
 		}
 		if result != expected {
-			t.Errorf("retrieveCameraStatus() = %v, want %v", result, expected)
+			t.Errorf("RetrieveCameraStatus() = %v, want %v", result, expected)
 		}
 	})
 
 	// Test with camera OFF
 	t.Run("Camera OFF", func(t *testing.T) {
-		controlDataUpdated = true
-		voyagerStatus.AFTEMP = 20.6
-		voyagerStatus.CCDTEMP = -15.4
-		voyagerStatus.CCDPOW = -123456789 // OFF
-		voyagerStatus.CCDSTAT = 3         // OFF
+		ControlDataUpdated = true
+		VoyagerStatus.AFTEMP = 20.6
+		VoyagerStatus.CCDTEMP = -15.4
+		VoyagerStatus.CCDPOW = -123456789 // OFF
+		VoyagerStatus.CCDSTAT = 3         // OFF
 
-		result := retrieveCameraStatus()
-		expected := camstatus{
+		result := RetrieveCameraStatus()
+		expected := Camstatus{
 			Ambient: 21,
 			Temp:    -15,
 			Power:   "OFF",
 			Status:  "OFF",
 		}
 		if result != expected {
-			t.Errorf("retrieveCameraStatus() = %v, want %v", result, expected)
+			t.Errorf("RetrieveCameraStatus() = %v, want %v", result, expected)
 		}
 	})
 }

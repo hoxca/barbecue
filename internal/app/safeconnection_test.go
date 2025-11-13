@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 func TestSafeConnection(t *testing.T) {
 	// Test SafeConnection basic functionality
 	t.Run("SafeConnection creation and basic operations", func(t *testing.T) {
-		// Create a nil connection for testing (we'll test the wrapper logic)
-		var realConn *websocket.Conn
-		sc := NewSafeConnection(realConn)
+		// Create a mock connection for testing the wrapper logic
+		mockConn := &MockWebSocketConn{}
+		sc := NewSafeConnection(mockConn)
 
 		// Test initial state
 		if sc.IsClosed() {
@@ -32,8 +32,8 @@ func TestSafeConnection(t *testing.T) {
 	})
 
 	t.Run("Concurrent access safety", func(t *testing.T) {
-		var realConn *websocket.Conn
-		sc := NewSafeConnection(realConn)
+		mockConn := &MockWebSocketConn{}
+		sc := NewSafeConnection(mockConn)
 
 		// Test concurrent close operations
 		testDone := make(chan bool, 3)

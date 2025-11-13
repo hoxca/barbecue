@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"testing"
@@ -63,7 +63,7 @@ func TestParseLogEvent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts, level, text := parseLogEvent(tt.message)
+			ts, level, text := ParseLogEvent(tt.message)
 
 			if tt.expectError {
 				// For error cases, we expect zero/default values
@@ -162,20 +162,20 @@ func TestParseControlData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseControlData(tt.message)
+			result := ParseControlData(tt.message)
 
 			if tt.expectError {
 				// For error cases, we expect default values
 				_ = result.SEQRUNNING != false || result.DRAGRUNNING != false
 			} else {
 				if result.SEQRUNNING != tt.expectedSeqRunning {
-					t.Errorf("parseControlData() SEQRUNNING = %v, want %v", result.SEQRUNNING, tt.expectedSeqRunning)
+					t.Errorf("ParseControlData() SEQRUNNING = %v, want %v", result.SEQRUNNING, tt.expectedSeqRunning)
 				}
 				if result.DRAGRUNNING != tt.expectedDragRunning {
-					t.Errorf("parseControlData() DRAGRUNNING = %v, want %v", result.DRAGRUNNING, tt.expectedDragRunning)
+					t.Errorf("ParseControlData() DRAGRUNNING = %v, want %v", result.DRAGRUNNING, tt.expectedDragRunning)
 				}
 				if result.CAMSTATUS != tt.expectedCamStatus {
-					t.Errorf("parseControlData() CAMSTATUS = %v, want %v", result.CAMSTATUS, tt.expectedCamStatus)
+					t.Errorf("ParseControlData() CAMSTATUS = %v, want %v", result.CAMSTATUS, tt.expectedCamStatus)
 				}
 			}
 		})
@@ -188,7 +188,7 @@ func TestParseControlDataWithMountStatus(t *testing.T) {
 											"Host":"test","Inst":1,"MNTPARK":true,"RUNSEQ":"",
 											"RUNDS":"","CCDSTAT":5,"VOYSTAT":1}`)
 
-	result := parseControlData(message)
+	result := ParseControlData(message)
 
 	if !result.MNTPARK {
 		t.Error("Expected MNTPARK to be true")
@@ -255,7 +255,7 @@ func TestParseControlDataWithAllFields(t *testing.T) {
 		"CAMSTATUS":"COOLED"
 	}`)
 
-	result := parseControlData(message)
+	result := ParseControlData(message)
 
 	// Test key fields
 	if !result.SEQRUNNING {

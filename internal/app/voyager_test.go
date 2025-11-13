@@ -1,7 +1,8 @@
-package main
+package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,13 +14,6 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/gorilla/websocket"
 )
-
-// WebSocketConnection interface for testing.
-type WebSocketConnection interface {
-	WriteMessage(messageType int, data []byte) error
-	ReadMessage() (messageType int, p []byte, err error)
-	Close() error
-}
 
 // MockWebSocketConn implements a mock WebSocket connection for testing.
 type MockWebSocketConn struct {
@@ -52,7 +46,7 @@ func (m *MockWebSocketConn) Close() error {
 }
 
 // Helper functions for testing that accept the interface.
-func sendToVoyagerMock(c WebSocketConnection, data []byte) {
+func sendToVoyagerMock(c WebSocketConn, data []byte) {
 	message := fmt.Appendf(nil, "%s\r\n", data)
 	err := c.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
@@ -62,13 +56,13 @@ func sendToVoyagerMock(c WebSocketConnection, data []byte) {
 	Log.Debugf("send: %s", data)
 }
 
-func remoteSetDashboardMock(c WebSocketConnection) {
-	p := &params{
+func remoteSetDashboardMock(c WebSocketConn) {
+	p := &Params{
 		UID:  fmt.Sprintf("%s", uuid.Must(uuid.NewV4())),
 		IsOn: true,
 	}
 
-	setDashboard := &method{
+	setDashboard := &Method{
 		Method: "RemoteSetDashboardMode",
 		Params: *p,
 		ID:     1,
@@ -100,15 +94,15 @@ func TestConnectVoyager(t *testing.T) {
 		hostPort := strings.TrimPrefix(server.URL, "http://")
 		testAddr := &hostPort
 
-		conn, err := connectVoyager(testAddr)
+		conn, err := ConnectVoyager(testAddr)
 
 		if err != nil {
-			t.Errorf("connectVoyager() returned error: %v", err)
+			t.Errorf("ConnectVoyager() returned error: %v", err)
 			return
 		}
 
 		if conn == nil {
-			t.Error("connectVoyager() returned nil connection")
+			t.Error("ConnectVoyager() returned nil connection")
 			return
 		}
 
@@ -190,28 +184,28 @@ func TestRemoteSetDashboard(t *testing.T) {
 
 			// Parse the sent message
 			msg := strings.TrimSuffix(string(mockConn.writeMessages[0]), "\r\n")
-			var methodStruct method
-			err := json.Unmarshal([]byte(msg), &methodStruct)
+			var MethodStruct Method
+			err := json.Unmarshal([]byte(msg), &MethodStruct)
 			if err != nil {
 				t.Errorf("Failed to parse dashboard set message: %v", err)
 				return
 			}
 
 			// Verify message structure
-			if methodStruct.Method != "RemoteSetDashboardMode" {
-				t.Errorf("Expected method RemoteSetDashboardMode, got %v", methodStruct.Method)
+			if MethodStruct.Method != "RemoteSetDashboardMode" {
+				t.Errorf("Expected Method RemoteSetDashboardMode, got %v", MethodStruct.Method)
 			}
 
-			if !methodStruct.Params.IsOn {
+			if !MethodStruct.Params.IsOn {
 				t.Error("Expected IsOn to be true")
 			}
 
-			if methodStruct.Params.UID == "" {
+			if MethodStruct.Params.UID == "" {
 				t.Error("Expected UID to be set")
 			}
 
-			if methodStruct.ID != 1 {
-				t.Errorf("Expected ID to be 1, got %v", methodStruct.ID)
+			if MethodStruct.ID != 1 {
+				t.Errorf("Expected ID to be 1, got %v", MethodStruct.ID)
 			}
 		})
 	}
@@ -221,12 +215,12 @@ func TestVoyagerMessageTypes(t *testing.T) {
 	// Test that different message types are properly formatted
 	tests := []struct {
 		name     string
-		event    event
+		Event    Event
 		expected string
 	}{
 		{
-			name: "Polling event",
-			event: event{
+			name: "Polling Event",
+			Event: Event{
 				Event:     "Polling",
 				Timestamp: 1234567890.0,
 				Inst:      1,
@@ -234,8 +228,8 @@ func TestVoyagerMessageTypes(t *testing.T) {
 			expected: "Polling",
 		},
 		{
-			name: "Control data event",
-			event: event{
+			name: "Control data Event",
+			Event: Event{
 				Event:     "ControlData",
 				Timestamp: 1234567890.0,
 				Inst:      1,
@@ -249,14 +243,14 @@ func TestVoyagerMessageTypes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockConn := &MockWebSocketConn{}
 
-			// Marshal the event
-			data, err := json.Marshal(tt.event)
+			// Marshal the Event
+			data, err := json.Marshal(tt.Event)
 			if err != nil {
-				t.Errorf("Failed to marshal event: %v", err)
+				t.Errorf("Failed to marshal Event: %v", err)
 				return
 			}
 
-			// Send the event
+			// Send the Event
 			sendToVoyagerMock(mockConn, data)
 
 			// Check if message was sent
@@ -267,16 +261,16 @@ func TestVoyagerMessageTypes(t *testing.T) {
 
 			// Parse the sent message
 			msg := strings.TrimSuffix(string(mockConn.writeMessages[0]), "\r\n")
-			var receivedEvent event
+			var receivedEvent Event
 			err = json.Unmarshal([]byte(msg), &receivedEvent)
 			if err != nil {
 				t.Errorf("Failed to parse received message: %v", err)
 				return
 			}
 
-			// Verify event content
+			// Verify Event content
 			if receivedEvent.Event != tt.expected {
-				t.Errorf("Expected event %v, got %v", tt.expected, receivedEvent.Event)
+				t.Errorf("Expected Event %v, got %v", tt.expected, receivedEvent.Event)
 			}
 		})
 	}
@@ -325,4 +319,125 @@ func TestMessageFormatting(t *testing.T) {
 			t.Errorf("Expected message %q, got %q", expectedContent, msg)
 		}
 	})
+}
+
+func TestGetCameraStatusWithConnection_ConnectionFailure(t *testing.T) {
+	// Set invalid address
+	originalAddr := AddrFlag
+	AddrFlag = "invalid:9999"
+	defer func() { AddrFlag = originalAddr }()
+
+	// Call function
+	camera, err := GetCameraStatusWithConnection()
+
+	// Assertions
+	if err == nil {
+		t.Error("Expected error for invalid address")
+	}
+	if !strings.Contains(err.Error(), "failed to connect to Voyager") {
+		t.Errorf("Expected connection error, got %v", err)
+	}
+	expected := Camstatus{}
+	if camera != expected {
+		t.Errorf("Expected zero Camstatus, got %+v", camera)
+	}
+}
+
+func TestHeartbeatVoyager_Quit(t *testing.T) {
+	mockConn := &MockWebSocketConn{}
+	sc := NewSafeConnection(mockConn)
+	quit := make(chan bool)
+	ticker := time.NewTicker(1 * time.Second) // Long enough not to fire
+	defer ticker.Stop()
+
+	done := make(chan bool)
+	go func() {
+		HeartbeatVoyager(sc, quit, ticker)
+		done <- true
+	}()
+
+	// Send quit immediately
+	quit <- true
+
+	// Wait for exit
+	select {
+	case <-done:
+		// Success
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Heartbeat did not exit on quit")
+	}
+
+	// Should not have sent any pings
+	if len(mockConn.writeMessages) != 0 {
+		t.Errorf("Expected no pings, got %d", len(mockConn.writeMessages))
+	}
+}
+
+func TestHeartbeatVoyager_PingSuccess(t *testing.T) {
+	mockConn := &MockWebSocketConn{}
+	sc := NewSafeConnection(mockConn)
+	quit := make(chan bool)
+	ticker := time.NewTicker(50 * time.Millisecond) // Short interval for test
+	defer ticker.Stop()
+
+	done := make(chan bool)
+	go func() {
+		HeartbeatVoyager(sc, quit, ticker)
+		done <- true
+	}()
+
+	// Wait for a few ticks
+	time.Sleep(200 * time.Millisecond)
+
+	// Should have sent several pings (empty data for ping)
+	if len(mockConn.writeMessages) < 3 {
+		t.Errorf("Expected at least 3 pings, got %d", len(mockConn.writeMessages))
+	}
+
+	// Verify all are empty (ping data)
+	for i, data := range mockConn.writeMessages {
+		if len(data) != 0 {
+			t.Errorf("Message %d: expected empty data for ping, got %v", i, data)
+		}
+	}
+
+	// Send quit
+	quit <- true
+
+	// Wait for exit
+	select {
+	case <-done:
+		// Success
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Heartbeat did not exit on quit")
+	}
+}
+
+func TestHeartbeatVoyager_PingError(t *testing.T) {
+	mockConn := &MockWebSocketConn{
+		writeError: errors.New("connection closed"),
+	}
+	sc := NewSafeConnection(mockConn)
+	quit := make(chan bool)
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	done := make(chan bool)
+	go func() {
+		HeartbeatVoyager(sc, quit, ticker)
+		done <- true
+	}()
+
+	// Wait for exit due to error
+	select {
+	case <-done:
+		// Success
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("Heartbeat did not exit on ping error")
+	}
+
+	// Should have attempted at least one ping
+	if len(mockConn.writeMessages) == 0 {
+		t.Error("Expected at least one ping attempt")
+	}
 }

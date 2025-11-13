@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"os"
@@ -21,8 +21,8 @@ func TestSetUpLogs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(_ *testing.T) {
-			verbosity = &tt.level
-			setUpLogs()
+			VerbosityFlag = tt.level
+			SetUpLogs()
 			// We can't easily test the actual log level without exposing internal state
 			// but we can verify the function doesn't panic
 		})
@@ -38,7 +38,7 @@ func TestReadConfig(t *testing.T) {
 		// Set args[0] to a directory that doesn't exist
 		os.Args = []string{"/non/existent/path"}
 
-		v := readConfig()
+		v := ReadConfig()
 		// Should return a viper instance even if config file is not found
 		if v == nil {
 			t.Error("readConfig() returned nil even for non-existent config")
@@ -49,10 +49,9 @@ func TestReadConfig(t *testing.T) {
 func TestParseConfig(t *testing.T) {
 	// Test with default values
 	t.Run("Default values", func(_ *testing.T) {
-		defaultAddr := "127.0.0.1:5950"
-		addr = &defaultAddr
+		AddrFlag = "127.0.0.1:5950"
 
-		parseConfig()
+		ParseConfig()
 
 		// This test mainly verifies the function doesn't panic
 		// since we can't easily mock readConfig
@@ -67,7 +66,7 @@ func TestConfigFileSearchPaths(t *testing.T) {
 
 		os.Args = []string{"/some/path"}
 
-		v := readConfig()
+		v := ReadConfig()
 		if v == nil {
 			t.Error("readConfig() returned nil")
 		}
@@ -82,7 +81,7 @@ func TestConfigEnvironmentOverride(t *testing.T) {
 
 		os.Args = []string{"/some/path"}
 
-		v := readConfig()
+		v := ReadConfig()
 		if v == nil {
 			t.Error("readConfig() returned nil")
 		}
