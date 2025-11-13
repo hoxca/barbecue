@@ -29,7 +29,7 @@ func init() {
 	}
 }
 
-func runNeedWarming(_ *cobra.Command, _ []string) {
+func runNeedWarming(cmd *cobra.Command, args []string) {
 	camera, err := app.GetCameraStatusWithConnection()
 	if err != nil {
 		Log.Debugf("Error retrieving camera status: %v\n", err)
@@ -39,6 +39,6 @@ func runNeedWarming(_ *cobra.Command, _ []string) {
 	if (camera.Status == "COOLING" || camera.Status == "COOLED" || camera.Status == "TIMEOUT") && camera.Temp < warmTemp {
 		fmt.Println("Ok, camera need warming")
 	} else {
-		fmt.Println("Camera temperature is adequate")
+		fmt.Println("Camera temperature is above target warming temp")
 	}
 }

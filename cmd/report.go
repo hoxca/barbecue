@@ -23,7 +23,7 @@ func init() {
 	rootCmd.AddCommand(reportCmd)
 }
 
-func runReport(_ *cobra.Command, _ []string) {
+func runReport(cmd *cobra.Command, args []string) {
 	camera, err := app.GetCameraStatusWithConnection()
 	if err != nil {
 		Log.Debugf("Error retrieving camera status: %v\n", err)
